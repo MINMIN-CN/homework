@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>作业管理</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .date-item {
+        @apply px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors rounded text-left w-full;
+      }
+      .date-item.active {
+        @apply bg-blue-50 text-blue-700 font-medium;
+      }
+      .loading {
+        @apply animate-pulse text-gray-500;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+  <div class="container mx-auto flex flex-col md:flex-row min-h-screen">
+    <!-- 左侧导航栏 -->
+    <aside class="w-full md:w-64 bg-white border-r p-4 flex-shrink-0">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-semibold">作业记录</h2>
+        <button id="refreshBtn" class="p-2 rounded hover:bg-gray-100 transition-colors" title="刷新文件列表">
+          <i class="fa fa-refresh text-gray-600"></i>
+        </button>
+      </div>
+      
+      <!-- 日期导航列表 -->
+      <div id="dateList" class="space-y-1 max-h-[calc(100vh-100px)] overflow-y-auto pr-2">
+        <div class="text-center text-gray-500 py-4">
+          <i class="fa fa-spinner fa-spin mr-2"></i>正在检测作业文件...
+        </div>
+      </div>
+    </aside>
+
+    <!-- 右侧主内容区 -->
+    <main class="flex-1 p-6 bg-gray-50">
+      <div id="contentContainer" class="bg-white rounded-lg shadow-sm p-6 min-h-[300px]">
+        <div class="text-center text-gray-500 py-12">
+          <i class="fa fa-file-text-o text-4xl mb-4"></i>
+          <p>请从左侧选择一个日期查看作业内容</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // 约定：作业文件命名格式为 yyyymmdd.html (如 20251010.html)
+    // 这里我们预定义一些可能的日期范围，实际使用时可以根据需要调整
+    const startDate = new Date(2025, 9, 1); // 2025年10月1日
+    const endDate = new Date(2025, 9, 31); // 2025年10月31日
+    
+    // 生成日期列表
+    function generateDateList() {
+      const dateList = [];
+      const currentDate = new Date(startDate);
+      
+      while (currentDate <= endDate) {
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const day = String(currentDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}${month}${day}`;
+        
+        dateList.push({
+          dateStr: dateStr,
+          fileName: `${dateStr}.html`,
+          displayDate: `${year}年${month}月${day}日`
+        });
+        
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      return dateList;
+    }
+    
+    // 检测文件是否存在
+    async function checkFileExists(fileName) {
+      try {
+        const response = await fetch(fileName, { method: 'HEAD' });
+        return response.ok;
+      } catch (error) {
+        return false;
+      }
+    }
+    
+    // 加载文件内容
+    async function loadFileContent(fileName) {
+      try {
+        const response = await fetch(fileName);
+        if (response.ok) {
+          return await response.text();
+        }
+        return `<div class="text-center text-red-500 py-12">
+                  <i class="fa fa-exclamation-circle text-4xl mb-4"></i>
+                  <p>无法加载作业内容</p>
+                </div>`;
+      } catch (error) {
+        return `<div class="text-center text-red-500 py-12">
+                  <i class="fa fa-exclamation-circle text-4xl mb-4"></i>
+                  <p>加载失败: ${error.message}</p>
+                </div>`;
+      }
+    }
+    
+    // 渲染日期列表
+    async function renderDateList() {
+      const dateListElement = document.getElementById('dateList');
+      dateListElement.innerHTML = '<div class="text-center text-gray-500 py-4"><i class="fa fa-spinner fa-spin mr-2"></i>正在检测作业文件...</div>';
+      
+      const allDates = generateDateList();
+      const existingFiles = [];
+      
+      // 检查哪些文件实际存在
+      for (const date of allDates) {
+        const exists = await checkFileExists(date.fileName);
+        if (exists) {
+          existingFiles.push(date);
+        }
+      }
+      
+      // 按日期倒序排列（最新的在前面）
+      existingFiles.sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+      
+      // 渲染存在的文件
+      if (existingFiles.length === 0) {
+        dateListElement.innerHTML = `
+          <div class="text-center text-gray-500 py-4">
+            <i class="fa fa-search text-4xl mb-4"></i>
+            <p>未找到作业文件</p>
+            <p class="text-sm mt-2">请在同目录下创建格式为 yyyymmdd.html 的文件</p>
+          </div>
+        `;
+        return;
+      }
+      
+      // 生成日期按钮HTML
+      let dateButtonsHTML = '';
+      existingFiles.forEach(date => {
+        dateButtonsHTML += `
+          <button class="date-item" data-file="${date.fileName}" data-date="${date.displayDate}">
+            <div class="font-medium">${date.dateStr}</div>
+            <div class="text-xs text-gray-500">${date.displayDate}</div>
+          </button>
+        `;
+      });
+      
+      dateListElement.innerHTML = dateButtonsHTML;
+      
+      // 为日期按钮添加点击事件
+      document.querySelectorAll('.date-item').forEach(button => {
+        button.addEventListener('click', async function() {
+          // 移除所有按钮的active类
+          document.querySelectorAll('.date-item').forEach(btn => btn.classList.remove('active'));
+          // 给当前点击的按钮添加active类
+          this.classList.add('active');
+          
+          const fileName = this.getAttribute('data-file');
+          const displayDate = this.getAttribute('data-date');
+          
+          // 显示加载状态
+          const contentContainer = document.getElementById('contentContainer');
+          contentContainer.innerHTML = `
+            <div class="text-center text-gray-500 py-12">
+              <i class="fa fa-spinner fa-spin text-4xl mb-4"></i>
+              <p>正在加载 ${fileName} 的内容...</p>
+            </div>
+          `;
+          
+          // 加载并显示文件内容
+          const content = await loadFileContent(fileName);
+          contentContainer.innerHTML = `
+            <div class="mb-6">
+              <h1 class="text-2xl font-bold">${fileName.replace('.html', '')}</h1>
+              <p class="text-sm text-gray-500">${displayDate}</p>
+            </div>
+            <div class="prose max-w-none">${content}</div>
+          `;
+        });
+      });
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      renderDateList();
+      
+      // 刷新按钮事件
+      document.getElementById('refreshBtn').addEventListener('click', renderDateList);
+    });
+  </script>
+</body>
+</html>

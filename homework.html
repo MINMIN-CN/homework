@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>作业管理</title>
+  <!-- 缓存控制：禁用所有缓存 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  
+  <!-- 网页名称改为“作业记录” -->
+  <title>作业记录</title>
+  
   <!-- 引入Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- 引入Font Awesome -->
@@ -19,9 +26,6 @@
       }
       .date-item.active {
         @apply bg-blue-50 text-blue-700 font-medium;
-      }
-      .loading {
-        @apply animate-pulse text-gray-500;
       }
     }
   </style>
@@ -57,8 +61,17 @@
   </div>
 
   <script>
-    // 约定：作业文件命名格式为 yyyymmdd.html (如 20251010.html)
-    // 这里我们预定义一些可能的日期范围，实际使用时可以根据需要调整
+    // 每次打开页面强制刷新一次（避免无限刷新循环）
+    if (!localStorage.getItem('justRefreshed')) {
+      localStorage.setItem('justRefreshed', 'true');
+      // 强制刷新页面，不使用缓存
+      window.location.reload(true);
+    } else {
+      // 刷新后清除标识，下次打开仍会刷新
+      localStorage.removeItem('justRefreshed');
+    }
+    
+    // 作业文件命名格式：yyyymmdd.html
     const startDate = new Date(2025, 9, 1); // 2025年10月1日
     const endDate = new Date(2025, 9, 31); // 2025年10月31日
     
@@ -85,20 +98,22 @@
       return dateList;
     }
     
-    // 检测文件是否存在
+    // 检测文件是否存在（带时间戳防缓存）
     async function checkFileExists(fileName) {
       try {
-        const response = await fetch(fileName, { method: 'HEAD' });
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${fileName}?t=${timestamp}`, { method: 'HEAD' });
         return response.ok;
       } catch (error) {
         return false;
       }
     }
     
-    // 加载文件内容
+    // 加载文件内容（带时间戳防缓存）
     async function loadFileContent(fileName) {
       try {
-        const response = await fetch(fileName);
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${fileName}?t=${timestamp}`);
         if (response.ok) {
           return await response.text();
         }
@@ -122,7 +137,7 @@
       const allDates = generateDateList();
       const existingFiles = [];
       
-      // 检查哪些文件实际存在
+      // 检查存在的文件
       for (const date of allDates) {
         const exists = await checkFileExists(date.fileName);
         if (exists) {
@@ -130,10 +145,10 @@
         }
       }
       
-      // 按日期倒序排列（最新的在前面）
+      // 按日期倒序排列
       existingFiles.sort((a, b) => b.dateStr.localeCompare(a.dateStr));
       
-      // 渲染存在的文件
+      // 渲染文件列表
       if (existingFiles.length === 0) {
         dateListElement.innerHTML = `
           <div class="text-center text-gray-500 py-4">
@@ -145,7 +160,7 @@
         return;
       }
       
-      // 生成日期按钮HTML
+      // 生成日期按钮
       let dateButtonsHTML = '';
       existingFiles.forEach(date => {
         dateButtonsHTML += `
@@ -158,18 +173,15 @@
       
       dateListElement.innerHTML = dateButtonsHTML;
       
-      // 为日期按钮添加点击事件
+      // 绑定点击事件
       document.querySelectorAll('.date-item').forEach(button => {
         button.addEventListener('click', async function() {
-          // 移除所有按钮的active类
           document.querySelectorAll('.date-item').forEach(btn => btn.classList.remove('active'));
-          // 给当前点击的按钮添加active类
           this.classList.add('active');
           
           const fileName = this.getAttribute('data-file');
           const displayDate = this.getAttribute('data-date');
           
-          // 显示加载状态
           const contentContainer = document.getElementById('contentContainer');
           contentContainer.innerHTML = `
             <div class="text-center text-gray-500 py-12">
@@ -178,7 +190,6 @@
             </div>
           `;
           
-          // 加载并显示文件内容
           const content = await loadFileContent(fileName);
           contentContainer.innerHTML = `
             <div class="mb-6">

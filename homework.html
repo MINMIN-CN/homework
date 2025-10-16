@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   
-  <!-- 网页名称改为“作业记录” -->
+  <!-- 网页名称 -->
   <title>作业记录</title>
   
   <!-- 引入Tailwind CSS -->
@@ -34,15 +34,22 @@
   <div class="container mx-auto flex flex-col md:flex-row min-h-screen">
     <!-- 左侧导航栏 -->
     <aside class="w-full md:w-64 bg-white border-r p-4 flex-shrink-0">
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">作业记录</h2>
         <button id="refreshBtn" class="p-2 rounded hover:bg-gray-100 transition-colors" title="刷新文件列表">
           <i class="fa fa-refresh text-gray-600"></i>
         </button>
       </div>
       
+      <!-- 展开/折叠按钮 -->
+      <div class="mb-4 text-center">
+        <button id="toggleHistoryBtn" class="text-sm text-purple-600 hover:text-purple-800 px-3 py-1 rounded border border-purple-200 hover:bg-purple-50 transition-colors">
+          <i class="fa fa-chevron-down mr-1"></i>显示更多作业
+        </button>
+      </div>
+      
       <!-- 日期导航列表 -->
-      <div id="dateList" class="space-y-1 max-h-[calc(100vh-100px)] overflow-y-auto pr-2">
+      <div id="dateList" class="space-y-1 max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
         <div class="text-center text-gray-500 py-4">
           <i class="fa fa-spinner fa-spin mr-2"></i>正在检测作业文件...
         </div>
@@ -64,22 +71,31 @@
     // 每次打开页面强制刷新一次（避免无限刷新循环）
     if (!localStorage.getItem('justRefreshed')) {
       localStorage.setItem('justRefreshed', 'true');
-      // 强制刷新页面，不使用缓存
       window.location.reload(true);
     } else {
-      // 刷新后清除标识，下次打开仍会刷新
       localStorage.removeItem('justRefreshed');
     }
     
-    // 作业文件命名格式：yyyymmdd.html
-    const startDate = new Date(2025, 9, 1); // 2025年10月1日
-    const endDate = new Date(2025, 9, 31); // 2025年10月31日
+    // 配置：显示最近的作业数量
+    const RECENT_COUNT = 3;
+    // 检测范围：过去6个月到未来1个月
+    const MONTHS_TO_CHECK = 6;
     
-    // 生成日期列表
-    function generateDateList() {
+    // 生成需要检测的日期范围（过去6个月到未来1个月）
+    function generateDateRange() {
       const dateList = [];
-      const currentDate = new Date(startDate);
+      const today = new Date();
       
+      // 计算起始日期（过去6个月）
+      const startDate = new Date();
+      startDate.setMonth(today.getMonth() - MONTHS_TO_CHECK);
+      
+      // 计算结束日期（未来1个月）
+      const endDate = new Date();
+      endDate.setMonth(today.getMonth() + 1);
+      
+      // 生成这个范围内的所有日期
+      const currentDate = new Date(startDate);
       while (currentDate <= endDate) {
         const year = currentDate.getFullYear();
         const month = String(currentDate.getMonth() + 1).padStart(2, '0');
@@ -89,7 +105,8 @@
         dateList.push({
           dateStr: dateStr,
           fileName: `${dateStr}.html`,
-          displayDate: `${year}年${month}月${day}日`
+          displayDate: `${year}年${month}月${day}日`,
+          dateObj: new Date(currentDate)
         });
         
         currentDate.setDate(currentDate.getDate() + 1);
@@ -134,7 +151,7 @@
       const dateListElement = document.getElementById('dateList');
       dateListElement.innerHTML = '<div class="text-center text-gray-500 py-4"><i class="fa fa-spinner fa-spin mr-2"></i>正在检测作业文件...</div>';
       
-      const allDates = generateDateList();
+      const allDates = generateDateRange();
       const existingFiles = [];
       
       // 检查存在的文件
@@ -145,8 +162,8 @@
         }
       }
       
-      // 按日期倒序排列
-      existingFiles.sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+      // 按日期倒序排列（最新的在前面）
+      existingFiles.sort((a, b) => b.dateObj - a.dateObj);
       
       // 渲染文件列表
       if (existingFiles.length === 0) {
@@ -160,18 +177,43 @@
         return;
       }
       
-      // 生成日期按钮
+      // 区分最近的作业和历史作业
+      const recentFiles = existingFiles.slice(0, RECENT_COUNT);
+      const historyFiles = existingFiles.slice(RECENT_COUNT);
+      
+      // 生成日期按钮HTML
       let dateButtonsHTML = '';
-      existingFiles.forEach(date => {
+      
+      // 添加最近的作业
+      recentFiles.forEach(date => {
         dateButtonsHTML += `
-          <button class="date-item" data-file="${date.fileName}" data-date="${date.displayDate}">
+          <button class="date-item recent" data-file="${date.fileName}" data-date="${date.displayDate}">
             <div class="font-medium">${date.dateStr}</div>
             <div class="text-xs text-gray-500">${date.displayDate}</div>
           </button>
         `;
       });
       
+      // 添加历史作业（默认隐藏）
+      if (historyFiles.length > 0) {
+        dateButtonsHTML += `<div id="historyFiles" class="hidden">`;
+        
+        historyFiles.forEach(date => {
+          dateButtonsHTML += `
+            <button class="date-item" data-file="${date.fileName}" data-date="${date.displayDate}">
+              <div class="font-medium">${date.dateStr}</div>
+              <div class="text-xs text-gray-500">${date.displayDate}</div>
+            </button>
+          `;
+        });
+        
+        dateButtonsHTML += `</div>`;
+      }
+      
       dateListElement.innerHTML = dateButtonsHTML;
+      
+      // 更新展开/折叠按钮状态
+      updateToggleButton(historyFiles.length);
       
       // 绑定点击事件
       document.querySelectorAll('.date-item').forEach(button => {
@@ -199,6 +241,32 @@
             <div class="prose max-w-none">${content}</div>
           `;
         });
+      });
+    }
+    
+    // 更新展开/折叠按钮状态
+    function updateToggleButton(historyCount) {
+      const toggleBtn = document.getElementById('toggleHistoryBtn');
+      const historyFiles = document.getElementById('historyFiles');
+      
+      if (historyCount === 0) {
+        toggleBtn.classList.add('hidden');
+        return;
+      }
+      
+      toggleBtn.classList.remove('hidden');
+      
+      // 按钮点击事件
+      toggleBtn.addEventListener('click', function() {
+        if (historyFiles.classList.contains('hidden')) {
+          // 展开历史作业
+          historyFiles.classList.remove('hidden');
+          toggleBtn.innerHTML = '<i class="fa fa-chevron-up mr-1"></i>收起历史作业';
+        } else {
+          // 折叠历史作业
+          historyFiles.classList.add('hidden');
+          toggleBtn.innerHTML = '<i class="fa fa-chevron-down mr-1"></i>显示更多作业';
+        }
       });
     }
     

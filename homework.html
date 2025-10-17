@@ -3,17 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- 缓存控制：禁用所有缓存 -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  
-  <!-- 网页名称 -->
+  <meta http-equiv="Cache-Control" content="max-age=3600">
   <title>作业记录</title>
   
-  <!-- 引入Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 引入Font Awesome -->
   <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
   
   <style type="text/tailwindcss">
@@ -43,7 +36,7 @@
       
       <!-- 展开/折叠按钮 -->
       <div class="mb-4 text-center">
-        <button id="toggleHistoryBtn" class="text-sm text-purple-600 hover:text-purple-800 px-3 py-1 rounded border border-purple-200 hover:bg-purple-50 transition-colors">
+        <button id="toggleHistoryBtn" class="text-sm text-purple-600 hover:text-purple-800 px-3 py-1 rounded border border-purple-200 hover:bg-purple-50 transition-colors hidden">
           <i class="fa fa-chevron-down mr-1"></i>显示更多作业
         </button>
       </div>
@@ -51,7 +44,7 @@
       <!-- 日期导航列表 -->
       <div id="dateList" class="space-y-1 max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
         <div class="text-center text-gray-500 py-4">
-          <i class="fa fa-spinner fa-spin mr-2"></i>正在检测作业文件...
+          <i class="fa fa-spinner fa-spin mr-2"></i>正在加载最近作业...
         </div>
       </div>
     </aside>
@@ -68,7 +61,7 @@
   </div>
 
   <script>
-    // 每次打开页面强制刷新一次（避免无限刷新循环）
+    // 每次打开页面强制刷新一次
     if (!localStorage.getItem('justRefreshed')) {
       localStorage.setItem('justRefreshed', 'true');
       window.location.reload(true);
@@ -76,34 +69,87 @@
       localStorage.removeItem('justRefreshed');
     }
     
-    // 配置：显示最近的作业数量
-    const RECENT_COUNT = 3;
-    // 检测范围：过去6个月到未来1个月
-    const MONTHS_TO_CHECK = 6;
+    // 配置：优先显示的最近天数
+    const PRIORITY_DAYS = 3;
+    // 检测范围：过去3个月到未来1个月
+    const MONTHS_TO_CHECK = 3;
     
-    // 生成需要检测的日期范围（过去6个月到未来1个月）
-    function generateDateRange() {
-      const dateList = [];
+    // 从缓存获取文件列表（有效期1小时）
+    function getCachedFiles() {
+      const cached = localStorage.getItem('homeworkFilesCache');
+      if (!cached) return null;
+      const { files, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp > 3600 * 1000) {
+        localStorage.removeItem('homeworkFilesCache');
+        return null;
+      }
+      return files;
+    }
+    
+    // 缓存文件列表
+    function cacheFiles(files) {
+      localStorage.setItem('homeworkFilesCache', JSON.stringify({
+        files,
+        timestamp: Date.now()
+      }));
+    }
+    
+    // 生成优先检测的最近3天日期
+    function generatePriorityDates() {
+      const priorityDates = [];
       const today = new Date();
       
-      // 计算起始日期（过去6个月）
+      // 生成今天、昨天、前天的日期
+      for (let i = 0; i < PRIORITY_DAYS; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}${month}${day}`;
+        
+        priorityDates.push({
+          dateStr,
+          fileName: `${dateStr}.html`,
+          displayDate: `${year}年${month}月${day}日`,
+          dateObj: new Date(date)
+        });
+      }
+      
+      return priorityDates;
+    }
+    
+    // 生成其他需要检测的日期范围（排除最近3天）
+    function generateOtherDates() {
+      const otherDates = [];
+      const today = new Date();
+      
+      // 起始日期（过去3个月）
       const startDate = new Date();
       startDate.setMonth(today.getMonth() - MONTHS_TO_CHECK);
       
-      // 计算结束日期（未来1个月）
+      // 结束日期（未来1个月）
       const endDate = new Date();
       endDate.setMonth(today.getMonth() + 1);
       
-      // 生成这个范围内的所有日期
+      // 生成范围内所有日期（排除最近3天）
       const currentDate = new Date(startDate);
       while (currentDate <= endDate) {
+        // 跳过最近3天的日期（已在优先检测列表中）
+        const daysDiff = Math.ceil((today - currentDate) / (1000 * 60 * 60 * 24));
+        if (daysDiff < PRIORITY_DAYS) {
+          currentDate.setDate(currentDate.getDate() + 1);
+          continue;
+        }
+        
         const year = currentDate.getFullYear();
         const month = String(currentDate.getMonth() + 1).padStart(2, '0');
         const day = String(currentDate.getDate()).padStart(2, '0');
         const dateStr = `${year}${month}${day}`;
         
-        dateList.push({
-          dateStr: dateStr,
+        otherDates.push({
+          dateStr,
           fileName: `${dateStr}.html`,
           displayDate: `${year}年${month}月${day}日`,
           dateObj: new Date(currentDate)
@@ -112,111 +158,66 @@
         currentDate.setDate(currentDate.getDate() + 1);
       }
       
-      return dateList;
+      return otherDates;
     }
     
-    // 检测文件是否存在（带时间戳防缓存）
-    async function checkFileExists(fileName) {
+    // 检测文件是否存在
+    async function checkFileExists(fileName, forceNoCache = false) {
       try {
-        const timestamp = new Date().getTime();
-        const response = await fetch(`${fileName}?t=${timestamp}`, { method: 'HEAD' });
+        const url = forceNoCache ? `${fileName}?t=${Date.now()}` : fileName;
+        const response = await fetch(url, { method: 'HEAD' });
         return response.ok;
       } catch (error) {
         return false;
       }
     }
     
-    // 加载文件内容（带时间戳防缓存）
-    async function loadFileContent(fileName) {
+    // 加载文件内容
+    async function loadFileContent(fileName, forceNoCache = false) {
       try {
-        const timestamp = new Date().getTime();
-        const response = await fetch(`${fileName}?t=${timestamp}`);
-        if (response.ok) {
-          return await response.text();
-        }
-        return `<div class="text-center text-red-500 py-12">
-                  <i class="fa fa-exclamation-circle text-4xl mb-4"></i>
-                  <p>无法加载作业内容</p>
-                </div>`;
+        const url = forceNoCache ? `${fileName}?t=${Date.now()}` : fileName;
+        const response = await fetch(url);
+        return response.ok ? await response.text() : `<div class="text-center text-red-500 py-12"><i class="fa fa-exclamation-circle text-4xl mb-4"></i><p>无法加载作业内容</p></div>`;
       } catch (error) {
-        return `<div class="text-center text-red-500 py-12">
-                  <i class="fa fa-exclamation-circle text-4xl mb-4"></i>
-                  <p>加载失败: ${error.message}</p>
-                </div>`;
+        return `<div class="text-center text-red-500 py-12"><i class="fa fa-exclamation-circle text-4xl mb-4"></i><p>加载失败: ${error.message}</p></div>`;
       }
     }
     
-    // 渲染日期列表
-    async function renderDateList() {
+    // 渲染日期按钮
+    function renderDateButtons(dateList, isPriority = false) {
       const dateListElement = document.getElementById('dateList');
-      dateListElement.innerHTML = '<div class="text-center text-gray-500 py-4"><i class="fa fa-spinner fa-spin mr-2"></i>正在检测作业文件...</div>';
+      const historyFilesContainer = document.getElementById('historyFiles') || document.createElement('div');
       
-      const allDates = generateDateRange();
-      const existingFiles = [];
-      
-      // 检查存在的文件
-      for (const date of allDates) {
-        const exists = await checkFileExists(date.fileName);
-        if (exists) {
-          existingFiles.push(date);
-        }
+      // 初始化历史文件容器
+      if (!document.getElementById('historyFiles')) {
+        historyFilesContainer.id = 'historyFiles';
+        historyFilesContainer.className = 'hidden';
+        dateListElement.appendChild(historyFilesContainer);
       }
       
-      // 按日期倒序排列（最新的在前面）
-      existingFiles.sort((a, b) => b.dateObj - a.dateObj);
-      
-      // 渲染文件列表
-      if (existingFiles.length === 0) {
-        dateListElement.innerHTML = `
-          <div class="text-center text-gray-500 py-4">
-            <i class="fa fa-search text-4xl mb-4"></i>
-            <p>未找到作业文件</p>
-            <p class="text-sm mt-2">请在同目录下创建格式为 yyyymmdd.html 的文件</p>
-          </div>
-        `;
-        return;
-      }
-      
-      // 区分最近的作业和历史作业
-      const recentFiles = existingFiles.slice(0, RECENT_COUNT);
-      const historyFiles = existingFiles.slice(RECENT_COUNT);
-      
-      // 生成日期按钮HTML
-      let dateButtonsHTML = '';
-      
-      // 添加最近的作业
-      recentFiles.forEach(date => {
-        dateButtonsHTML += `
-          <button class="date-item recent" data-file="${date.fileName}" data-date="${date.displayDate}">
+      // 生成按钮HTML
+      let buttonsHTML = '';
+      dateList.forEach(date => {
+        buttonsHTML += `
+          <button class="date-item ${isPriority ? 'recent' : ''}" data-file="${date.fileName}" data-date="${date.displayDate}">
             <div class="font-medium">${date.dateStr}</div>
             <div class="text-xs text-gray-500">${date.displayDate}</div>
           </button>
         `;
       });
       
-      // 添加历史作业（默认隐藏）
-      if (historyFiles.length > 0) {
-        dateButtonsHTML += `<div id="historyFiles" class="hidden">`;
-        
-        historyFiles.forEach(date => {
-          dateButtonsHTML += `
-            <button class="date-item" data-file="${date.fileName}" data-date="${date.displayDate}">
-              <div class="font-medium">${date.dateStr}</div>
-              <div class="text-xs text-gray-500">${date.displayDate}</div>
-            </button>
-          `;
-        });
-        
-        dateButtonsHTML += `</div>`;
+      // 优先显示的作业直接添加到列表顶部
+      if (isPriority) {
+        dateListElement.innerHTML = buttonsHTML + (historyFilesContainer.outerHTML || '');
+      } else {
+        // 历史作业添加到折叠容器
+        historyFilesContainer.innerHTML += buttonsHTML;
+        dateListElement.appendChild(historyFilesContainer);
       }
       
-      dateListElement.innerHTML = dateButtonsHTML;
-      
-      // 更新展开/折叠按钮状态
-      updateToggleButton(historyFiles.length);
-      
       // 绑定点击事件
-      document.querySelectorAll('.date-item').forEach(button => {
+      document.querySelectorAll('.date-item:not([data-bound])').forEach(button => {
+        button.setAttribute('data-bound', 'true');
         button.addEventListener('click', async function() {
           document.querySelectorAll('.date-item').forEach(btn => btn.classList.remove('active'));
           this.classList.add('active');
@@ -225,12 +226,7 @@
           const displayDate = this.getAttribute('data-date');
           
           const contentContainer = document.getElementById('contentContainer');
-          contentContainer.innerHTML = `
-            <div class="text-center text-gray-500 py-12">
-              <i class="fa fa-spinner fa-spin text-4xl mb-4"></i>
-              <p>正在加载 ${fileName} 的内容...</p>
-            </div>
-          `;
+          contentContainer.innerHTML = `<div class="text-center text-gray-500 py-12"><i class="fa fa-spinner fa-spin text-4xl mb-4"></i><p>正在加载 ${fileName} 的内容...</p></div>`;
           
           const content = await loadFileContent(fileName);
           contentContainer.innerHTML = `
@@ -244,38 +240,82 @@
       });
     }
     
-    // 更新展开/折叠按钮状态
-    function updateToggleButton(historyCount) {
+    // 更新展开/折叠按钮
+    function updateToggleButton(hasHistory) {
       const toggleBtn = document.getElementById('toggleHistoryBtn');
-      const historyFiles = document.getElementById('historyFiles');
-      
-      if (historyCount === 0) {
+      if (hasHistory) {
+        toggleBtn.classList.remove('hidden');
+        toggleBtn.addEventListener('click', function() {
+          const historyFiles = document.getElementById('historyFiles');
+          if (historyFiles.classList.contains('hidden')) {
+            historyFiles.classList.remove('hidden');
+            toggleBtn.innerHTML = '<i class="fa fa-chevron-up mr-1"></i>收起历史作业';
+          } else {
+            historyFiles.classList.add('hidden');
+            toggleBtn.innerHTML = '<i class="fa fa-chevron-down mr-1"></i>显示更多作业';
+          }
+        });
+      } else {
         toggleBtn.classList.add('hidden');
-        return;
       }
-      
-      toggleBtn.classList.remove('hidden');
-      
-      // 按钮点击事件
-      toggleBtn.addEventListener('click', function() {
-        if (historyFiles.classList.contains('hidden')) {
-          // 展开历史作业
-          historyFiles.classList.remove('hidden');
-          toggleBtn.innerHTML = '<i class="fa fa-chevron-up mr-1"></i>收起历史作业';
-        } else {
-          // 折叠历史作业
-          historyFiles.classList.add('hidden');
-          toggleBtn.innerHTML = '<i class="fa fa-chevron-down mr-1"></i>显示更多作业';
-        }
-      });
     }
     
-    // 页面加载完成后初始化
+    // 优先加载最近3天作业，再异步加载其他作业
+    async function loadHomeworkFiles(forceRefresh = false) {
+      const dateListElement = document.getElementById('dateList');
+      dateListElement.innerHTML = '<div class="text-center text-gray-500 py-4"><i class="fa fa-spinner fa-spin mr-2"></i>正在加载最近作业...</div>';
+      
+      // 优先检测最近3天的作业
+      const priorityDates = generatePriorityDates();
+      const priorityChecks = priorityDates.map(date => 
+        checkFileExists(date.fileName, forceRefresh).then(exists => exists ? date : null)
+      );
+      const priorityFiles = (await Promise.all(priorityChecks)).filter(Boolean);
+      
+      // 立即渲染最近3天的作业
+      renderDateButtons(priorityFiles, true);
+      
+      // 异步检测其他日期的作业（不阻塞最近作业的显示）
+      setTimeout(async () => {
+        // 先检查缓存
+        let allFiles = forceRefresh ? null : getCachedFiles();
+        
+        if (!allFiles) {
+          // 缓存不存在时重新检测所有日期
+          const otherDates = generateOtherDates();
+          const otherChecks = otherDates.map(date => 
+            checkFileExists(date.fileName, forceRefresh).then(exists => exists ? date : null)
+          );
+          const otherFiles = (await Promise.all(otherChecks)).filter(Boolean);
+          
+          // 合并所有文件并排序
+          allFiles = [...priorityFiles, ...otherFiles].sort((a, b) => b.dateObj - a.dateObj);
+          cacheFiles(allFiles);
+        }
+        
+        // 提取历史作业（排除已显示的最近3天）
+        const historyFiles = allFiles.filter(file => 
+          !priorityFiles.some(p => p.dateStr === file.dateStr)
+        );
+        
+        // 渲染历史作业
+        if (historyFiles.length > 0) {
+          renderDateButtons(historyFiles, false);
+          updateToggleButton(true);
+        } else {
+          updateToggleButton(false);
+        }
+      }, 500); // 延迟500ms开始检测其他作业，优先保证最近作业的显示速度
+    }
+    
+    // 页面加载初始化
     document.addEventListener('DOMContentLoaded', () => {
-      renderDateList();
+      loadHomeworkFiles();
       
       // 刷新按钮事件
-      document.getElementById('refreshBtn').addEventListener('click', renderDateList);
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        loadHomeworkFiles(true);
+      });
     });
   </script>
 </body>

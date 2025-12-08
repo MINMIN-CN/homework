@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="max-age=3600">
+  <title>作业记录</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .date-item {
+        @apply px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors rounded text-left w-full;
+      }
+      .date-item.active {
+        @apply bg-blue-50 text-blue-700 font-medium;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+  <div class="container mx-auto flex flex-col md:flex-row min-h-screen">
+    <aside class="w-full md:w-64 bg-white border-r p-4 flex-shrink-0">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">作业记录</h2>
+        <button id="refreshBtn" class="p-2 rounded hover:bg-gray-100 transition-colors" title="刷新文件列表">
+          <i class="fa fa-refresh text-gray-600"></i>
+        </button>
+      </div>
+      <div class="mb-4 text-center">
+        <button id="toggleHistoryBtn" class="text-sm text-purple-600 hover:text-purple-800 px-3 py-1 rounded border border-purple-200 hover:bg-purple-50 transition-colors hidden">
+          <i class="fa fa-chevron-down mr-1"></i>显示更多作业
+        </button>
+      </div>
+      <div id="dateList" class="space-y-1 max-h-[calc(100vh-120px)] overflow-y-auto pr-2">
+        <div class="text-center text-gray-500 py-4">
+          <i class="fa fa-spinner fa-spin mr-2"></i>正在加载最近作业...
+        </div>
+      </div>
+    </aside>
+    <main class="flex-1 p-6 bg-gray-50">
+      <div id="contentContainer" class="bg-white rounded-lg shadow-sm p-6 min-h-[300px]">
+        <div class="text-center text-gray-500 py-12">
+          <i class="fa fa-file-text-o text-4xl mb-4"></i>
+          <p>请从左侧选择一个日期查看作业内容</p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    if (!localStorage.getItem('justRefreshed')) {
+      localStorage.setItem('justRefreshed', 'true');
+      window.location.reload(true);
+    } else {
+      localStorage.removeItem('justRefreshed');
+    }
+    const PRIORITY_DAYS = 3;
+    const MONTHS_TO_CHECK = 3;
+    function getCachedFiles() {
+      const cached = localStorage.getItem('homeworkFilesCache');
+      if (!cached) return null;
+      const { files, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp > 3600 * 1000) {
+        localStorage.removeItem('homeworkFilesCache');
+        return null;
+      }
+      return files;
+    }
+    function cacheFiles(files) {
+      localStorage.setItem('homeworkFilesCache', JSON.stringify({
+        files,
+        timestamp: Date.now()
+      }));
+    }
+    function generatePriorityDates() {
+      const priorityDates = [];
+      const today = new Date();
+      for (let i = 0; i < PRIORITY_DAYS; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}${month}${day}`;
+        priorityDates.push({
+          dateStr,
+          fileName: `${dateStr}.html`,
+          displayDate: `${year}年${month}月${day}日`,
+          dateObj: new Date(date)
+        });
+      }
+      return priorityDates;
+    }
+    function generateOtherDates() {
+      const otherDates = [];
+      const today = new Date();
+      const startDate = new Date();
+      startDate.setMonth(today.getMonth() - MONTHS_TO_CHECK);
+      const endDate = new Date();
+      endDate.setMonth(today.getMonth() + 1);
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        const daysDiff = Math.ceil((today - currentDate) / (1000 * 60 * 60 * 24));
+        if (daysDiff < PRIORITY_DAYS) {
+          currentDate.setDate(currentDate.getDate() + 1);
+          continue;
+        }
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const day = String(currentDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}${month}${day}`;
+        otherDates.push({
+          dateStr,
+          fileName: `${dateStr}.html`,
+          displayDate: `${year}年${month}月${day}日`,
+          dateObj: new Date(currentDate)
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      return otherDates;
+    }
+    async function checkFileExists(fileName, forceNoCache = false) {
+      try {
+        const url = forceNoCache ? `${fileName}?t=${Date.now()}` : fileName;
+        const response = await fetch(url, { method: 'HEAD' });
+        return response.ok;
+      } catch (error) {
+        return false;
+      }
+    }
+    async function loadFileContent(fileName, forceNoCache = false) {
+      try {
+        const url = forceNoCache ? `${fileName}?t=${Date.now()}` : fileName;
+        const response = await fetch(url);
+        return response.ok ? await response.text() : `<div class="text-center text-red-500 py-12"><i class="fa fa-exclamation-circle text-4xl mb-4"></i><p>无法加载作业内容</p></div>`;
+      } catch (error) {
+        return `<div class="text-center text-red-500 py-12"><i class="fa fa-exclamation-circle text-4xl mb-4"></i><p>加载失败: ${error.message}</p></div>`;
+      }
+    }
+    function renderDateButtons(dateList, isPriority = false) {
+      const dateListElement = document.getElementById('dateList');
+      const historyFilesContainer = document.getElementById('historyFiles') || document.createElement('div');
+      if (!document.getElementById('historyFiles')) {
+        historyFilesContainer.id = 'historyFiles';
+        historyFilesContainer.className = 'hidden';
+        dateListElement.appendChild(historyFilesContainer);
+      }
+      let buttonsHTML = '';
+      dateList.forEach(date => {
+        buttonsHTML += `
+          <button class="date-item ${isPriority ? 'recent' : ''}" data-file="${date.fileName}" data-date="${date.displayDate}">
+            <div class="font-medium">${date.dateStr}</div>
+            <div class="text-xs text-gray-500">${date.displayDate}</div>
+          </button>
+        `;
+      });
+      if (isPriority) {
+        dateListElement.innerHTML = buttonsHTML + (historyFilesContainer.outerHTML || '');
+      } else {
+        historyFilesContainer.innerHTML += buttonsHTML;
+        dateListElement.appendChild(historyFilesContainer);
+      }
+      document.querySelectorAll('.date-item:not([data-bound])').forEach(button => {
+        button.setAttribute('data-bound', 'true');
+        button.addEventListener('click', async function() {
+          document.querySelectorAll('.date-item').forEach(btn => btn.classList.remove('active'));
+          this.classList.add('active');
+          const fileName = this.getAttribute('data-file');
+          const displayDate = this.getAttribute('data-date');
+          const contentContainer = document.getElementById('contentContainer');
+          contentContainer.innerHTML = `<div class="text-center text-gray-500 py-12"><i class="fa fa-spinner fa-spin text-4xl mb-4"></i><p>正在加载 ${fileName} 的内容...</p></div>`;
+          const content = await loadFileContent(fileName);
+          contentContainer.innerHTML = `
+            <div class="mb-6">
+              <h1 class="text-2xl font-bold">${fileName.replace('.html', '')}</h1>
+              <p class="text-sm text-gray-500">${displayDate}</p>
+            </div>
+            <div class="prose max-w-none">${content}</div>
+          `;
+        });
+      });
+    }
+    function updateToggleButton(hasHistory) {
+      const toggleBtn = document.getElementById('toggleHistoryBtn');
+      if (hasHistory) {
+        toggleBtn.classList.remove('hidden');
+        toggleBtn.addEventListener('click', function() {
+          const historyFiles = document.getElementById('historyFiles');
+          if (historyFiles.classList.contains('hidden')) {
+            historyFiles.classList.remove('hidden');
+            toggleBtn.innerHTML = '<i class="fa fa-chevron-up mr-1"></i>收起历史作业';
+          } else {
+            historyFiles.classList.add('hidden');
+            toggleBtn.innerHTML = '<i class="fa fa-chevron-down mr-1"></i>显示更多作业';
+          }
+        });
+      } else {
+        toggleBtn.classList.add('hidden');
+      }
+    }
+    async function loadHomeworkFiles(forceRefresh = false) {
+      const dateListElement = document.getElementById('dateList');
+      dateListElement.innerHTML = '<div class="text-center text-gray-500 py-4"><i class="fa fa-spinner fa-spin mr-2"></i>正在加载最近作业...</div>';
+      const priorityDates = generatePriorityDates();
+      const priorityChecks = priorityDates.map(date => 
+        checkFileExists(date.fileName, forceRefresh).then(exists => exists ? date : null)
+      );
+      const priorityFiles = (await Promise.all(priorityChecks)).filter(Boolean);
+      renderDateButtons(priorityFiles, true);
+      setTimeout(async () => {
+        let allFiles = forceRefresh ? null : getCachedFiles();
+        if (!allFiles) {
+          const otherDates = generateOtherDates();
+          const otherChecks = otherDates.map(date => 
+            checkFileExists(date.fileName, forceRefresh).then(exists => exists ? date : null)
+          );
+          const otherFiles = (await Promise.all(otherChecks)).filter(Boolean);
+          allFiles = [...priorityFiles, ...otherFiles].sort((a, b) => b.dateObj - a.dateObj);
+          cacheFiles(allFiles);
+        }
+        const historyFiles = allFiles.filter(file => 
+          !priorityFiles.some(p => p.dateStr === file.dateStr)
+        );
+        if (historyFiles.length > 0) {
+          renderDateButtons(historyFiles, false);
+          updateToggleButton(true);
+        } else {
+          updateToggleButton(false);
+        }
+      }, 500); 
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      loadHomeworkFiles();
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        loadHomeworkFiles(true);
+      });
+    });
+  </script>
+</body>
+</html>

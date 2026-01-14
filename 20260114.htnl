@@ -1,0 +1,35 @@
+<div class="space-y-3">
+  <div>
+    <p class="font-semibold">语文: </p>
+    <ul class="ml-6 space-y-1">
+      <li>1.基训第十三课一二课时预习反馈;</li>
+      <li>2.第十四课预习反馈;</li>
+    </ul>
+  </div>
+
+  <div>
+    <p class="font-semibold">数学: </p>
+    <ul class="ml-6 space-y-1">
+      <li>1.打印发的东西;</li>
+      <li>2.背九上一二章概念;</li>
+    </ul>
+  </div>
+
+  <div>
+    <p class="font-semibold">英语: </p>
+    <ul class="ml-6 space-y-1">
+      <li>1.SD预习案;</li>
+      <li>2.练习册SBC;</li>
+    </ul>
+  </div>
+
+  <div>
+    <p class="font-semibold">化学: </p>
+    <p>基训往后两页;</p>
+  </div>
+
+  <div>
+    <p class="font-semibold">物理: </p>
+    <p>第16章卷子;</p>
+  </div>
+</div>

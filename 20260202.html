@@ -338,14 +338,14 @@
     </div>
 
     <script>
-        // 定义所有考试科目时间
+        // 定义所有考试科目完整起止时间
         const exams = [
-            { id: 'chinese', time: new Date(2026, 1, 2, 8, 20, 0) },
-            { id: 'chemistry', time: new Date(2026, 1, 2, 10, 40, 0) },
-            { id: 'daoli', time: new Date(2026, 1, 2, 14, 30, 0) },
-            { id: 'math', time: new Date(2026, 1, 3, 8, 20, 0) },
-            { id: 'physics', time: new Date(2026, 1, 3, 10, 30, 0) },
-            { id: 'english', time: new Date(2026, 1, 3, 14, 30, 0) }
+            { id: 'chinese', start: new Date(2026, 1, 2, 8, 20, 0), end: new Date(2026, 1, 2, 10, 20, 0) },
+            { id: 'chemistry', start: new Date(2026, 1, 2, 10, 40, 0), end: new Date(2026, 1, 2, 11, 40, 0) },
+            { id: 'daoli', start: new Date(2026, 1, 2, 14, 30, 0), end: new Date(2026, 1, 2, 16, 45, 0) },
+            { id: 'math', start: new Date(2026, 1, 3, 8, 20, 0), end: new Date(2026, 1, 3, 10, 20, 0) },
+            { id: 'physics', start: new Date(2026, 1, 3, 10, 30, 0), end: new Date(2026, 1, 3, 11, 30, 0) },
+            { id: 'english', start: new Date(2026, 1, 3, 14, 30, 0), end: new Date(2026, 1, 3, 16, 10, 0) }
         ];
 
         // 更新倒计时
@@ -353,38 +353,41 @@
             const now = new Date();
 
             exams.forEach(exam => {
-                const diff = exam.time - now;
                 const statusEl = document.getElementById(`${exam.id}Status`);
                 const countdownEl = document.getElementById(`${exam.id}Countdown`);
 
-                if (diff <= 0) {
-                    // 考试已开始或已结束
-                    if (diff > - (2 * 60 * 60 * 1000)) { // 假设考试最长2小时
-                        statusEl.textContent = "考试进行中";
-                        statusEl.className = "status ongoing";
-                    } else {
-                        statusEl.textContent = "已结束";
-                        statusEl.className = "status completed";
-                        countdownEl.innerHTML = `<span style="color:#9e9e9e;">考试已结束</span>`;
-                        return;
-                    }
-                } else {
+                if (now < exam.start) {
+                    // 考试未开始：显示距离开始的倒计时
                     statusEl.textContent = "即将开始";
                     statusEl.className = "status upcoming";
+                    const diff = exam.start - now;
+                    updateCountdownNumbers(exam.id, diff);
+                } else if (now >= exam.start && now < exam.end) {
+                    // 考试进行中：显示距离结束的倒计时
+                    statusEl.textContent = "考试进行中";
+                    statusEl.className = "status ongoing";
+                    const diff = exam.end - now;
+                    updateCountdownNumbers(exam.id, diff);
+                } else {
+                    // 考试已结束
+                    statusEl.textContent = "已结束";
+                    statusEl.className = "status completed";
+                    countdownEl.innerHTML = `<span style="color:#9e9e9e;">考试已结束</span>`;
                 }
-
-                // 计算天、时、分、秒
-                const day = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const hour = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minute = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const second = Math.floor((diff % (1000 * 60)) / 1000);
-
-                // 更新DOM
-                document.getElementById(`${exam.id}Day`).textContent = day.toString().padStart(2, '0');
-                document.getElementById(`${exam.id}Hour`).textContent = hour.toString().padStart(2, '0');
-                document.getElementById(`${exam.id}Minute`).textContent = minute.toString().padStart(2, '0');
-                document.getElementById(`${exam.id}Second`).textContent = second.toString().padStart(2, '0');
             });
+        }
+
+        // 更新倒计时数字
+        function updateCountdownNumbers(id, diff) {
+            const day = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hour = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minute = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const second = Math.floor((diff % (1000 * 60)) / 1000);
+
+            document.getElementById(`${id}Day`).textContent = day.toString().padStart(2, '0');
+            document.getElementById(`${id}Hour`).textContent = hour.toString().padStart(2, '0');
+            document.getElementById(`${id}Minute`).textContent = minute.toString().padStart(2, '0');
+            document.getElementById(`${id}Second`).textContent = second.toString().padStart(2, '0');
         }
 
         // 初始化并每秒更新

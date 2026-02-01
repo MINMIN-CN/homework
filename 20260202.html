@@ -1,5 +1,395 @@
-<div class="space-y-3">
-  <div>
-    <p class="font-semibold">考试顺利</p>
-  </div>
-</div>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>考试倒计时 | 逢考必过</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #e94560;
+            font-size: 2rem;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #a8b2d1;
+            font-size: 1.1rem;
+        }
+
+        .exam-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .exam-day {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .exam-day h2 {
+            color: #e94560;
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .subject-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .subject-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .subject-card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .subject-info {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .subject-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .subject-time {
+            font-size: 0.9rem;
+            color: #a8b2d1;
+        }
+
+        .countdown {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .countdown-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 50px;
+        }
+
+        .countdown-num {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        .countdown-text {
+            font-size: 0.7rem;
+            color: #a8b2d1;
+            text-transform: uppercase;
+        }
+
+        .status {
+            font-size: 0.9rem;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .status.upcoming {
+            background: rgba(233, 69, 96, 0.2);
+            color: #e94560;
+        }
+
+        .status.ongoing {
+            background: rgba(0, 200, 83, 0.2);
+            color: #00c853;
+        }
+
+        .status.completed {
+            background: rgba(158, 158, 158, 0.2);
+            color: #9e9e9e;
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.6rem;
+            }
+
+            .subject-card {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .countdown {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 考试倒计时</h1>
+        <p>愿你从容应考，旗开得胜 🎯</p>
+    </div>
+
+    <div class="exam-container">
+        <div class="exam-day">
+            <h2>📅 2026年02月02日（周一）</h2>
+            <div class="subject-list">
+                <div class="subject-card">
+                    <div class="subject-info">
+                        <div class="subject-name">语文</div>
+                        <div class="subject-time">8:20-10:20</div>
+                    </div>
+                    <div class="countdown" id="chineseCountdown">
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="chineseDay">00</div>
+                            <div class="countdown-text">天</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="chineseHour">00</div>
+                            <div class="countdown-text">时</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="chineseMinute">00</div>
+                            <div class="countdown-text">分</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="chineseSecond">00</div>
+                            <div class="countdown-text">秒</div>
+                        </div>
+                    </div>
+                    <span class="status upcoming" id="chineseStatus">即将开始</span>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-info">
+                        <div class="subject-name">化学</div>
+                        <div class="subject-time">10:40-11:40</div>
+                    </div>
+                    <div class="countdown" id="chemistryCountdown">
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="chemistryDay">00</div>
+                            <div class="countdown-text">天</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="chemistryHour">00</div>
+                            <div class="countdown-text">时</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="chemistryMinute">00</div>
+                            <div class="countdown-text">分</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="chemistrySecond">00</div>
+                            <div class="countdown-text">秒</div>
+                        </div>
+                    </div>
+                    <span class="status upcoming" id="chemistryStatus">即将开始</span>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-info">
+                        <div class="subject-name">道历</div>
+                        <div class="subject-time">14:30-16:45</div>
+                    </div>
+                    <div class="countdown" id="daoliCountdown">
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="daoliDay">00</div>
+                            <div class="countdown-text">天</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="daoliHour">00</div>
+                            <div class="countdown-text">时</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="daoliMinute">00</div>
+                            <div class="countdown-text">分</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="daoliSecond">00</div>
+                            <div class="countdown-text">秒</div>
+                        </div>
+                    </div>
+                    <span class="status upcoming" id="daoliStatus">即将开始</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="exam-day">
+            <h2>📅 2026年02月03日（周二）</h2>
+            <div class="subject-list">
+                <div class="subject-card">
+                    <div class="subject-info">
+                        <div class="subject-name">数学</div>
+                        <div class="subject-time">8:20-10:20</div>
+                    </div>
+                    <div class="countdown" id="mathCountdown">
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="mathDay">00</div>
+                            <div class="countdown-text">天</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="mathHour">00</div>
+                            <div class="countdown-text">时</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="mathMinute">00</div>
+                            <div class="countdown-text">分</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="mathSecond">00</div>
+                            <div class="countdown-text">秒</div>
+                        </div>
+                    </div>
+                    <span class="status upcoming" id="mathStatus">即将开始</span>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-info">
+                        <div class="subject-name">物理</div>
+                        <div class="subject-time">10:30-11:30</div>
+                    </div>
+                    <div class="countdown" id="physicsCountdown">
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="physicsDay">00</div>
+                            <div class="countdown-text">天</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="physicsHour">00</div>
+                            <div class="countdown-text">时</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="physicsMinute">00</div>
+                            <div class="countdown-text">分</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="physicsSecond">00</div>
+                            <div class="countdown-text">秒</div>
+                        </div>
+                    </div>
+                    <span class="status upcoming" id="physicsStatus">即将开始</span>
+                </div>
+
+                <div class="subject-card">
+                    <div class="subject-info">
+                        <div class="subject-name">英语</div>
+                        <div class="subject-time">14:30-16:10</div>
+                    </div>
+                    <div class="countdown" id="englishCountdown">
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="englishDay">00</div>
+                            <div class="countdown-text">天</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="englishHour">00</div>
+                            <div class="countdown-text">时</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="englishMinute">00</div>
+                            <div class="countdown-text">分</div>
+                        </div>
+                        <div class="countdown-item">
+                            <div class="countdown-num" id="englishSecond">00</div>
+                            <div class="countdown-text">秒</div>
+                        </div>
+                    </div>
+                    <span class="status upcoming" id="englishStatus">即将开始</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 定义所有考试科目时间
+        const exams = [
+            { id: 'chinese', time: new Date(2026, 1, 2, 8, 20, 0) },
+            { id: 'chemistry', time: new Date(2026, 1, 2, 10, 40, 0) },
+            { id: 'daoli', time: new Date(2026, 1, 2, 14, 30, 0) },
+            { id: 'math', time: new Date(2026, 1, 3, 8, 20, 0) },
+            { id: 'physics', time: new Date(2026, 1, 3, 10, 30, 0) },
+            { id: 'english', time: new Date(2026, 1, 3, 14, 30, 0) }
+        ];
+
+        // 更新倒计时
+        function updateCountdowns() {
+            const now = new Date();
+
+            exams.forEach(exam => {
+                const diff = exam.time - now;
+                const statusEl = document.getElementById(`${exam.id}Status`);
+                const countdownEl = document.getElementById(`${exam.id}Countdown`);
+
+                if (diff <= 0) {
+                    // 考试已开始或已结束
+                    if (diff > - (2 * 60 * 60 * 1000)) { // 假设考试最长2小时
+                        statusEl.textContent = "考试进行中";
+                        statusEl.className = "status ongoing";
+                    } else {
+                        statusEl.textContent = "已结束";
+                        statusEl.className = "status completed";
+                        countdownEl.innerHTML = `<span style="color:#9e9e9e;">考试已结束</span>`;
+                        return;
+                    }
+                } else {
+                    statusEl.textContent = "即将开始";
+                    statusEl.className = "status upcoming";
+                }
+
+                // 计算天、时、分、秒
+                const day = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hour = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minute = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const second = Math.floor((diff % (1000 * 60)) / 1000);
+
+                // 更新DOM
+                document.getElementById(`${exam.id}Day`).textContent = day.toString().padStart(2, '0');
+                document.getElementById(`${exam.id}Hour`).textContent = hour.toString().padStart(2, '0');
+                document.getElementById(`${exam.id}Minute`).textContent = minute.toString().padStart(2, '0');
+                document.getElementById(`${exam.id}Second`).textContent = second.toString().padStart(2, '0');
+            });
+        }
+
+        // 初始化并每秒更新
+        updateCountdowns();
+        setInterval(updateCountdowns, 1000);
+    </script>
+</body>
+</html>

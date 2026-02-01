@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 适配移动端，禁止缩放 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>逢考必过 · 考试顺利</title>
+    <style>
+        /* 全局样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+
+        /* 页面背景与整体布局 */
+        body {
+            background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 背景装饰元素（轻量动效） */
+        body::before, body::after {
+            content: "";
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 218, 185, 0.3);
+            z-index: -1;
+            animation: float 8s ease-in-out infinite alternate;
+        }
+        body::before {
+            width: 300px;
+            height: 300px;
+            top: -100px;
+            right: -100px;
+        }
+        body::after {
+            width: 250px;
+            height: 250px;
+            bottom: -80px;
+            left: -80px;
+            animation-delay: 2s;
+        }
+
+        /* 主容器 */
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 40px 20px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            max-width: 500px;
+            width: 100%;
+            z-index: 1;
+        }
+
+        /* 标题样式 */
+        h1 {
+            color: #e67e22;
+            font-size: 2.2rem;
+            margin-bottom: 15px;
+            letter-spacing: 3px;
+            position: relative;
+        }
+        h1::after {
+            content: "";
+            width: 80px;
+            height: 3px;
+            background: #e67e22;
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 3px;
+        }
+
+        /* 祝福语样式 */
+        .blessing {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin: 25px 0;
+            color: #555;
+        }
+
+        /* 励志标语 */
+        .slogan {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #27ae60;
+            margin: 20px 0;
+            letter-spacing: 2px;
+        }
+
+        /* 倒计时模块 */
+        .countdown {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(39, 174, 96, 0.05);
+            border-radius: 12px;
+        }
+        .countdown h3 {
+            color: #27ae60;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        .countdown-time {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .time-item {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            min-width: 60px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        .time-num {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e67e22;
+        }
+        .time-text {
+            font-size: 0.8rem;
+            color: #777;
+            margin-top: 5px;
+        }
+
+        /* 幸运按钮 */
+        .lucky-btn {
+            padding: 12px 30px;
+            background: linear-gradient(90deg, #e67e22, #f39c12);
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        .lucky-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(230, 126, 34, 0.3);
+        }
+
+        /* 页脚 */
+        footer {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        /* 浮动动画 */
+        @keyframes float {
+            0% {
+                transform: translate(0, 0);
+            }
+            100% {
+                transform: translate(20px, -20px);
+            }
+        }
+
+        /* 加载动画（初始进入） */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .container {
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 400px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            .slogan {
+                font-size: 1.1rem;
+            }
+            .time-num {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>逢考必过 金榜题名</h1>
+        <p class="blessing">
+            愿你提笔从容自信，合笔如愿以偿<br>
+            所有努力皆有回报，所有付出终得圆满<br>
+            考的都会，蒙的都对，考试顺利，一路开挂！
+        </p>
+        <p class="slogan">心有所期，超常发挥！</p>
+
+        <!-- 考试倒计时模块（可自定义时间） -->
+        <div class="countdown">
+            <h3>距离考试还有</h3>
+            <div class="countdown-time" id="countdownTime">
+                <div class="time-item">
+                    <div class="time-num" id="day">00</div>
+                    <div class="time-text">天</div>
+                </div>
+                <div class="time-item">
+                    <div class="time-num" id="hour">00</div>
+                    <div class="time-text">时</div>
+                </div>
+                <div class="time-item">
+                    <div class="time-num" id="minute">00</div>
+                    <div class="time-text">分</div>
+                </div>
+                <div class="time-item">
+                    <div class="time-num" id="second">00</div>
+                    <div class="time-text">秒</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 幸运加持按钮 -->
+        <button class="lucky-btn" id="luckyBtn">点击获取考试幸运buff ✨</button>
+    </div>
+
+    <footer>愿你历尽千帆，得偿所愿 | 考试顺利专属祝福页</footer>
+
+    <script>
+        // 1. 自定义考试时间（格式：年, 月-1, 日, 时, 分, 秒）【重点修改这里】
+        // 示例：2026年6月7日 9:00:00 考试 → new Date(2026, 5, 7, 9, 0, 0)
+        const EXAM_TIME = new Date(2026, 6, 22, 0, 0, 0);
+
+        // 2. 倒计时功能
+        function updateCountdown() {
+            const now = new Date();
+            const diff = EXAM_TIME - now; // 时间差（毫秒）
+
+            if (diff <= 0) {
+                document.getElementById('countdownTime').innerHTML = '<p style="color:#e74c3c; font-weight:500;">考试开始啦！加油！</p>';
+                return;
+            }
+
+            // 计算天、时、分、秒
+            const day = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hour = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minute = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const second = Math.floor((diff % (1000 * 60)) / 1000);
+
+            // 渲染到页面（补0成2位数）
+            document.getElementById('day').innerText = day.toString().padStart(2, '0');
+            document.getElementById('hour').innerText = hour.toString().padStart(2, '0');
+            document.getElementById('minute').innerText = minute.toString().padStart(2, '0');
+            document.getElementById('second').innerText = second.toString().padStart(2, '0');
+        }
+
+        // 初始化倒计时并每秒更新
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+
+        // 3. 幸运按钮点击效果
+        const luckyBtn = document.getElementById('luckyBtn');
+        const blessings = [
+            "幸运buff已激活！逢考必过～",
+            "阅卷老师给你打满分！",
+            "提笔就是标准答案！",
+            "蒙的全对，考的都会！",
+            "金榜题名，前程似锦！",
+            "超常发挥，一举夺魁！"
+        ];
+        luckyBtn.addEventListener('click', function() {
+            // 随机获取祝福语
+            const randomBless = blessings[Math.floor(Math.random() * blessings.length)];
+            // 按钮文字切换+动效
+            this.innerText = randomBless;
+            this.style.transform = 'scale(1.08)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1.05)';
+            }, 300);
+            // 3秒后恢复原文字
+            setTimeout(() => {
+                this.innerText = '点击获取考试幸运buff ✨';
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

@@ -53,14 +53,19 @@
     </main>
   </div>
   <script>
+    // 页面刷新逻辑：确保页面在首次加载时强制刷新一次，以避免缓存问题
     if (!localStorage.getItem('justRefreshed')) {
       localStorage.setItem('justRefreshed', 'true');
       window.location.reload(true);
     } else {
       localStorage.removeItem('justRefreshed');
     }
+    
+    // 常量定义：优先显示的天数和检查的月份数
     const PRIORITY_DAYS = 3;
     const MONTHS_TO_CHECK = 3;
+    
+    // 获取缓存的文件列表，如果缓存过期则返回null
     function getCachedFiles() {
       const cached = localStorage.getItem('homeworkFilesCache');
       if (!cached) return null;
@@ -71,12 +76,16 @@
       }
       return files;
     }
+    
+    // 缓存文件列表到localStorage
     function cacheFiles(files) {
       localStorage.setItem('homeworkFilesCache', JSON.stringify({
         files,
         timestamp: Date.now()
       }));
     }
+    
+    // 生成优先日期列表（最近几天）
     function generatePriorityDates() {
       const priorityDates = [];
       const today = new Date();
@@ -96,6 +105,8 @@
       }
       return priorityDates;
     }
+    
+    // 生成其他日期列表（历史日期）
     function generateOtherDates() {
       const otherDates = [];
       const today = new Date();
@@ -124,6 +135,8 @@
       }
       return otherDates;
     }
+    
+    // 检查文件是否存在
     async function checkFileExists(fileName, forceNoCache = false) {
       try {
         const url = forceNoCache ? `${fileName}?t=${Date.now()}` : fileName;
@@ -133,6 +146,8 @@
         return false;
       }
     }
+    
+    // 加载文件内容
     async function loadFileContent(fileName, forceNoCache = false) {
       try {
         const url = forceNoCache ? `${fileName}?t=${Date.now()}` : fileName;
@@ -142,6 +157,8 @@
         return `<div class="text-center text-red-500 py-12"><i class="fa fa-exclamation-circle text-4xl mb-4"></i><p>加载失败: ${error.message}</p></div>`;
       }
     }
+    
+    // 渲染日期按钮
     function renderDateButtons(dateList, isPriority = false) {
       const dateListElement = document.getElementById('dateList');
       const historyFilesContainer = document.getElementById('historyFiles') || document.createElement('div');
@@ -165,16 +182,20 @@
         historyFilesContainer.innerHTML += buttonsHTML;
         dateListElement.appendChild(historyFilesContainer);
       }
+      // 为新按钮添加点击事件监听器
       document.querySelectorAll('.date-item:not([data-bound])').forEach(button => {
         button.setAttribute('data-bound', 'true');
         button.addEventListener('click', async function() {
+          // 移除其他按钮的激活状态
           document.querySelectorAll('.date-item').forEach(btn => btn.classList.remove('active'));
           this.classList.add('active');
           const fileName = this.getAttribute('data-file');
           const displayDate = this.getAttribute('data-date');
           const contentContainer = document.getElementById('contentContainer');
+          // 显示加载中提示
           contentContainer.innerHTML = `<div class="text-center text-gray-500 py-12"><i class="fa fa-spinner fa-spin text-4xl mb-4"></i><p>正在加载 ${fileName} 的内容...</p></div>`;
           const content = await loadFileContent(fileName);
+          // 显示文件内容
           contentContainer.innerHTML = `
             <div class="mb-6">
               <h1 class="text-2xl font-bold">${fileName.replace('.html', '')}</h1>
@@ -185,6 +206,8 @@
         });
       });
     }
+    
+    // 更新切换按钮的显示状态
     function updateToggleButton(hasHistory) {
       const toggleBtn = document.getElementById('toggleHistoryBtn');
       if (hasHistory) {
@@ -203,15 +226,21 @@
         toggleBtn.classList.add('hidden');
       }
     }
+    
+    // 加载作业文件列表
     async function loadHomeworkFiles(forceRefresh = false) {
       const dateListElement = document.getElementById('dateList');
+      // 显示加载提示
       dateListElement.innerHTML = '<div class="text-center text-gray-500 py-4"><i class="fa fa-spinner fa-spin mr-2"></i>正在加载最近作业...</div>';
       const priorityDates = generatePriorityDates();
+      // 检查优先日期的文件是否存在
       const priorityChecks = priorityDates.map(date => 
         checkFileExists(date.fileName, forceRefresh).then(exists => exists ? date : null)
       );
       const priorityFiles = (await Promise.all(priorityChecks)).filter(Boolean);
+      // 渲染优先日期按钮
       renderDateButtons(priorityFiles, true);
+      // 延迟加载历史文件
       setTimeout(async () => {
         let allFiles = forceRefresh ? null : getCachedFiles();
         if (!allFiles) {
@@ -234,8 +263,11 @@
         }
       }, 500); 
     }
+    
+    // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', () => {
       loadHomeworkFiles();
+      // 刷新按钮事件
       document.getElementById('refreshBtn').addEventListener('click', () => {
         loadHomeworkFiles(true);
       });
